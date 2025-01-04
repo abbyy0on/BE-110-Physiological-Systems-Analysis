@@ -1,0 +1,349 @@
+
+% Name: Abby Yoon
+
+% call the function
+illustrateConvolution([1 2 1], [6 4 2 1]);
+
+illustrateStackedConvolution([1 2 1.5], [4 2 1]);
+
+ 
+%% Question 7a: Plot a three-year snippet of the provided temperature data, along with smoothed versions of the data using centered rectangular-window moving-average smoothing filters of width 11, 31, 61, 121, & 361 days   
+
+data = readtable('boston_weather_through2018.csv'); % load data
+
+data_date = datetime(data.DATE, 'InputFormat','MM/dd/uuuu'); % convert into datetime
+data_mean = mean([data.TMAX, data.TMIN], 2, 'omitnan'); % takes avg of max and min temp in data set
+three_year_data = data(data_date >= datetime(1903,1,1) & data_date <= datetime(1906,1,1), :); % extracts three year snippet
+three_year_data_mean = mean([three_year_data.TMAX, three_year_data.TMIN], 2, 'omitnan');
+windows = [11, 31, 61, 121, 361]; % establishes window sizes
+figure;
+hold on
+plot(three_year_data.DATE, three_year_data_mean, 'k', 'DisplayName', 'Original Data');
+xlabel('Date');
+ylabel('Temperature');
+title('Three Year Temperature Data With Smoothing');
+legend('show');
+grid on;
+for k = 1:length(windows)
+    n = windows(k);
+    h = ones(n,1)/n;
+    smoothedData = conv(three_year_data_mean, h, 'valid');
+    
+    tVector = three_year_data.DATE((n-1)/2 + (1:length(smoothedData)));
+    plot(tVector, smoothedData, 'DisplayName', sprintf('Window=%d days', n));
+end
+hold off;
+
+
+%% Question 7b: Repeat using conv(x,h, a three-year snippet of the provided temperature data, along with smoothed versions of the data using centered rectangular-window moving-average smoothing filters of width 11, 31, 61, 121, & 361 days   
+figure
+
+subplot(2,1,1);
+title('Smoothed Data (conv same)');
+xlabel('Date');
+ylabel('Temperature');
+legend('show');
+grid on;
+hold on;
+plot(three_year_data.DATE, three_year_data_mean, 'k', 'DisplayName', 'Original Data');
+for k = 1:length(windows)
+    n = windows(k);
+    h = ones(n, 1) / n;  
+    smoothed_data = conv(three_year_data_mean, h, 'same');  
+    
+    % pot  'same' smoothed data
+    plot(three_year_data.DATE, smoothed_data, 'DisplayName', sprintf('Window=%d days', n));
+end
+hold off;
+% Plot using full
+subplot(2,1,2);
+title('Smoothed Data (conv full)');
+xlabel('Date');
+ylabel('Temperature');
+legend('show');
+grid on;
+hold on;
+plot(three_year_data.DATE, three_year_data_mean, 'k', 'DisplayName', 'Original Data');
+for k = 1:length(windows)
+    n = windows(k);
+    h = ones(n, 1) / n;   
+    smoothed_data_full = conv(three_year_data_mean, h, 'full');   
+    
+    % adjust the x-axis 
+    dates_extended = [three_year_data.DATE(1) - days((n-1)/2):days(1):three_year_data.DATE(end) + days((n-1)/2)];
+    plot(dates_extended(1:length(smoothed_data_full)), smoothed_data_full, 'DisplayName', sprintf('Window=%d days', n));
+end
+hold off;
+
+
+%% Question 7c: Using the same snippet of the boston temperature data, plot the mean-subtracted raw temperature data, and on top of that plot the result of convolving the data with the simplest differentiating filter h(n)=[1, -1]. Additionally, apply this simple differentiating filter to the 31-day smoothed version of the raw temp data, and plot the result on top of the other two traces. 
+
+subtracted_mean = three_year_data_mean - mean(three_year_data_mean); % mean subtracted data
+h_diff = [1, -1];
+diff_raw = conv(subtracted_mean, h_diff, 'same'); %  simple differentiating filter
+window_size = 31; % set a 31 day smoothed data
+h_smooth = ones(window_size, 1) / window_size;
+smoothed_data = conv(three_year_data_mean, h_smooth, 'same');  % 31 day smoothed data
+diff_smooth = conv(smoothed_data, h_diff, 'same');
+combined_filter = conv(h_smooth, h_diff, 'full');  % full convolution to get combined filter
+diff_combined = conv(three_year_data_mean, combined_filter, 'same');  % apply combined filter
+doubleSmoothedFilter = conv(h_smooth, conv(h_diff, h_smooth, 'full'), 'full');  % full convolution for double smoothing
+doubleSmoothedOutput = conv(three_year_data_mean, doubleSmoothedFilter, 'same');
+figure;
+xlabel('Date');
+ylabel('Temperature');
+title('Mean-subtracted Data & Convolving Data');
+legend('show');
+grid on;
+hold on;
+plot(three_year_data.DATE, subtracted_mean, 'r', 'DisplayName', 'Mean-subtracted Data');
+plot(three_year_data.DATE, diff_raw, 'k', 'DisplayName', 'Differentiated Data');
+plot(three_year_data.DATE, diff_smooth, 'g', 'DisplayName', 'Smoothed & Differentiated');
+plot(three_year_data.DATE, diff_combined, 'b', 'DisplayName', 'Combined Filter'); % dingle filter ,gets same result as smoothed & differentiated
+plot(three_year_data.DATE, doubleSmoothedOutput, 'm', 'DisplayName', 'Double Smoothing & Differentiated'); % single filter gets same result as smoothing, differentiating, and smoothing again
+hold off;
+
+%% Question  8: What filter h(n) would produce an output that corresponds to what gets smoothed out by a 31-day smoothing filter (i.e. the difference between the raw data and the smoothed data)? Apply this filter to the same snippet of the boston temperature data used above, and plot the result on top of the mean-subtracted raw data. 
+
+subtracted_mean = three_year_data_mean - mean(three_year_data_mean); 
+window_size = 31;  
+h_smooth = ones(window_size, 1) / window_size;
+h_smooth_out = [1; zeros(window_size-1, 1)] - h_smooth;
+smoothed_out_data = conv(three_year_data_mean, h_smooth_out, 'same');  
+figure;
+xlabel('Date');
+ylabel('Temperature');
+title('Mean-Subtracted Data and What Gets Smoothed Out by 31-Day Filter');
+legend('show');
+grid on;
+hold on;
+plot(three_year_data.DATE, subtracted_mean, 'r', 'DisplayName', 'Mean-subtracted Raw Data');
+plot(three_year_data.DATE, smoothed_out_data, 'b', 'DisplayName', 'Smoothed Out Data');
+hold off;
+
+%% Question  9: Plot the provided ECG data, which shows a recording from a single cardiac cycle, and on top of that, plot smoothed versions of the data using centered rectangular window moving average smoothing filters of width 3, 5, 11, and 21 points. Note that the sampling rate here is 100Hz, so these widths correspond to 30, 50, 110, and 210ms, respectively. Vertically offset each of the smoothed versions by about 30 units so that they’re each independently visible for clarity (i.e +30 for the 3pt filter, +60 for the 5pt filter, etc). Write a MATLAB function: conv1(x,h) that calls conv(x,h, 'valid') but returns properly aligned data by padding the output of conv(x,h, 'valid') with the Appropriate number of NaN values. Use your conv1 function to produce the plot described above.  
+ecgData = load('noisy_ecg_100Hz.mat').noisy_ecg_100Hz; 
+fs = 100;    % Sampling rate (10kHz)
+time = (1:length(ecgData))./fs;
+figure;
+plot(time,ecgData);
+hold on
+offset = 0;
+hold on
+for n = [3 5 11 21]
+    offset = offset + 30;
+    plot(time, conv1(ecgData,ones(n,1).*(1/n))+offset, 'linewidth', 2);
+end
+legend({'Raw Data', '3 pt', '5 pt', '11 pt', '21 pt'});
+xlabel('Time(s)');
+ylabel('Signal');
+title('ECG Smooth Data');
+ 
+%% Question 10: Apply a 3-point moving average filter and a 12-point moving average filter to the respiratory signal 'resp'. Display the results
+load('resp_noise.mat');  
+fs = 125;  % sampling freq
+h3 = ones(1, 3) / 3;    % 3 point moving average filter
+h12 = ones(1, 12) / 12;  % 12 point moving average filter
+resp_filtered_3 = filter(h3, 1, resp);
+resp_filtered_12 = filter(h12, 1, resp);
+
+
+figure;
+
+
+subplot(2, 1, 1);
+plot(resp, 'DisplayName', 'Unfiltered Signal');
+hold on;
+plot(resp_filtered_3 + 1, 'DisplayName', '3-Point Filtered Signal');  % offset by 1 for visibility
+title('Respiratory Signal - 3 Point Moving Average');
+xlabel('Sample');
+ylabel('Amplitude');
+legend show;
+grid on;
+
+
+subplot(2, 1, 2);
+plot(resp, 'DisplayName', 'Unfiltered Signal');
+hold on;
+plot(resp_filtered_12 + 1, 'DisplayName', '12-Point Filtered Signal');  % offset by 1 for visibility
+title('Respiratory Signal - 12 Point Moving Average');
+xlabel('Sample');
+ylabel('Amplitude');
+legend show;
+grid on;
+%% Question 11: Plot the impulse response
+
+% establish essentials
+tau1 = 50e-3;  % 50ms in seconds
+tau2 = 15e-3;  % 15ms in seconds
+t = 0:0.001:0.3;  % time 0 to 300ms in steps of 1ms
+h = exp(-t/tau1) - exp(-t/tau2); % twitch response
+
+figure;
+subplot(3,1,1);
+plot(t*1000, h);  % multiply t by 1000 to convert to ms 
+title('Twitch Response (Impulse Response)');
+xlabel('Time (ms)');
+ylabel('Amplitude');
+grid on;
+x_1 = zeros(800,1);  
+x_1(101:200:701) = 1;  % Impulses with 200ms intervals
+y_1 = conv(x_1, h, 'full');  % Convolve with twitch response
+t_b = (0:length(y_1)-1) * 0.001;  % Time axis for convolution
+subplot(3,1,2);
+plot(t_b*1000, y_1);
+title('Response to 4 Impulses Separated by 200ms');
+xlabel('Time (ms)');
+ylabel('Muscle Force');
+grid on;
+
+x_c = zeros(800,1);  
+x_c(101:20:161) = 1;   
+y_c = conv(x_c, h, 'full');  
+t_c = (0:length(y_c)-1) * 0.001;  
+subplot(3,1,3);
+plot(t_c*1000, y_c);
+title('Response to 4 Impulses Separated by 20ms');
+xlabel('Time (ms)');
+ylabel('Muscle Force');
+grid on;
+
+%% FUNCTION DEFINITIONS
+
+% The following function takes a discrete-time input signal (x) and impulse
+% rseponse function (h) and creates an array of plots that graphically
+% demonstrates how breaking down the input signal into a set of individual
+% impulse functions can be used to determine the ouptput (y) 
+
+function illustrateConvolution(x, h) % x = input signal, h = impulse response
+figure;
+color = 'bcgyrm'; % color = colors to use (blue/cyan/green/etc..), 
+Nx = length(x); % 
+N = Nx+2; %  N = the total number of rows of plots
+
+% plot x
+subplot(N,2,1); hold on; 
+for k=1:Nx, 
+    xx(k,:) = 0*x; % intialize row vector of zeroes
+    xx(k,k)=x(k); % set the k-th element to x(k)
+    bar(xx(k,:),color(k)); 
+    ylabel('x(n)'); 
+    title('Input Signal');
+end; % plot each impulse w/ a different color
+ 
+% plot impulse response 'h' in second subplot using black
+subplot(N,2,2); bar(h,'k');  
+title('Impulse Response (h(n))');
+xlabel('n');
+ylabel('y(n)');
+
+for k=1:Nx,
+    yy(k,:) = conv(xx(k,:), h, 'full'); %% performs convolution for each impulse (xx(k,:), aka 'kth' impulse) with 'h'
+    % plot the k-th impulse
+    subplot(N,2,2*k+1); bar(xx(k,:),color(k));
+    ylabel(sprintf('x(%.0f)', k)); % plot the component impulses xK-1 (n) and label the plot
+    if k == 1
+        title('Input Breakdown');
+    end 
+    if k == 3
+        xlabel('Time(n)');
+    end
+        % plot the response to the k-th impulse
+    subplot(N,2,2*k+2); bar(yy(k,:),color(k));  
+    if k == 1
+        title('Output breakdown');
+    end 
+end 
+
+    % plot the response to the k-th impulse
+subplot(N,2,2*N); 
+y = conv(x, h, 'full'); % calculate final convolution result
+bar(y, 'k'); % plot response yK-1 (n) to the current impulse xK-1 (n) and label the plot
+for k = 0:N-2
+    subplot(N, 2, 2*k+1);
+        xlim([-1, length(x)+1]);
+        ylim([0, max(x)]);
+        set(gca, 'xtick', []);
+end 
+for k = 0:N-1
+    subplot(N, 2, 2*k+2);
+    xlim([-1, length(y) + 1]);
+    ylim([0, max(y)]);
+    set(gca, 'xtick', []);
+    title('Output signal');
+    ylabel('y(n)');
+    xlabel('x(n)');
+end
+end
+
+function illustrateStackedConvolution(x, h) % x = input signal, h = impulse response
+figure;
+color = 'bcgyrm'; % color = colors to use (blue/cyan/green/etc..), 
+Nx = length(x); % 
+N = Nx+2; %  N = the total number of rows of plots
+
+% plot x
+subplot(3,2,1); bar(x, 'k');
+title('Input Signal');
+ylabel('x(n)')
+
+subplot(3,2,2); bar(h, 'k');
+title('Impulse Response');
+ylabel('h(n)')
+subplot(3,2,3);
+hold on 
+for k=1:Nx, 
+    xx(k,:) = 0*x; % intialize row vector of zeroes
+    xx(k,k)=x(k); % set the k-th element to x(k)
+    bar(xx(k,:),color(k)); 
+    ylabel('x(n)'); 
+    title('Input Breakdown');
+end; % plot each impulse w/ a different color
+hold on 
+
+for k=1:Nx, 
+    xx(k,:) = 0*x; % intialize row vector of zeroes
+    xx(k,k)=x(k); % set the k-th element to x(k)
+    bar(xx(k,:),color(k)); 
+    ylabel('x(n)'); 
+    title('Input Breakdown');
+end; % plot each impulse w/ a different color
+ hold on 
+
+for k=1:Nx, 
+    xx(k,:) = 0*x; % intialize row vector of zeroes
+    xx(k,k)=x(k); % set the k-th element to x(k)
+    bar(xx(k,:),color(k)); 
+    ylabel('x(n)'); 
+    title('Input Breakdown');
+end; % plot each impulse w/ a different color
+
+hold off
+
+subplot(3,2,4);
+hold on 
+for k = 1:Nx,
+    yy(k,:) =     conv(xx(k, :), h, 'full');
+end 
+b = bar(yy', 'stacked');
+title('Output Breakdown');
+ylabel('y(n) breakdown');
+set(b, 'FaceColor', 'Flat');
+b(1).CData = [0 0 1];
+b(2).CData = [0 1 1];
+b(3).CData = [0 1 0];
+hold off;
+end 
+
+function convResult = conv1(x,h)
+        convResult = conv(x,h,'valid');
+        sizeDiff = length(x) - length(convResult);
+        padNaN = NaN(1,floor(sizeDiff/2));
+        convResult = convResult';
+        convResult = [padNaN, convResult, padNaN];
+end
+
+
+
+
+ 
