@@ -1,0 +1,317 @@
+%% pset 5
+
+%% Question 4d: For A=10 & K=5, make a log-log plot in MATLAB of the Fourier Transform of x(t) vs w (frequency) and a linear plot 
+w=[0.1:0.1:1000]; 
+j=sqrt(-1); % define j and w
+K = 5; A = 10;
+X= K ./ (j*w + A); % must include an '*' to multiple j and w; otherwise matlab recognizes it as a variable name 
+figure; 
+subplot(121); 
+loglog(w,abs(X)); 
+grid; % note that in MATLAB abs(X) is the magnitude of X, if X is complex
+xlabel('Freq (rad/sec)'); ylabel('Magnitude of X(w)'); title('Log-Log Plot');
+
+w = [-50:0.1:50];  
+X= K ./ (j*w + A); % need to redfine X to reflect the same size as 'w'
+subplot(122); 
+plot(w,abs(X)); 
+grid; xlabel('Freq (rad/sec)'); ylabel('Magnitude of X(w)'); title('Linear Plot');  % linear plot is the same thing as a regular plot 
+
+%% Question 5b: Make a log-log plot of the frequency domain impulse response function versus w, for w on [0.1, 10] rad/sec 
+w = [0.1:0.001:10]; % j was already defined in 4d
+H =  (0.022848 * (j*w).^2 + 9.52 * (j*w)) ./ (0.00025 * (j*w).^2 + 0.115 * (j*w) +1) ; % don't forget to include multiply signs for your numbers too, & '.' for matrix operations 
+figure; 
+loglog(w,abs(H)); % this function plots, so no need to use plot() after
+grid; % note that in MATLAB abs(X) is the magnitude of X, if X is complex
+xlabel('Freq (rad/sec)'); ylabel('Magnitude of H(w)'); title('Log-Log Plot');
+ 
+
+%% Question 6b: Make a log-log plot in MATLAB of ‖H(jw)‖ vs w for angular velocity, angular position, angular acceleration
+
+w=[0.1:0.1:1000]; 
+H = 250 ./ ( (j*w).^2 + 60*(j*w) + 500);
+figure; 
+loglog(w,abs(H)); % this function plots, so no need to use plot() after
+grid; % note that in MATLAB abs(X) is the magnitude of X, if X is complex
+xlabel('Freq (rad/sec)'); ylabel('Magnitude of H(w)'); title('Log-Log Plot, Angular Velocity');
+
+% 6f - angular position
+w=[0.1:0.1:10000]; 
+H = 250 ./ ( (j*w) .* ( (j*w).^2 + 60*(j*w) + 500 ) );
+figure; 
+loglog(w,abs(H)); % this function plots, so no need to use plot() after
+grid; % note that in MATLAB abs(X) is the magnitude of X, if X is complex
+xlabel('Freq (rad/sec)'); ylabel('Magnitude of H(w)'); title('Log-Log Plot, Angular Position');
+
+
+% 6g - angular acceleration
+w=[0.1:0.1:10000]; 
+H = ( 250*(j*w) ) ./ ( (j*w).^2 + 60*(j*w) + 500);
+figure; 
+loglog(w,abs(H)); % this function plots, so no need to use plot() after
+grid; % note that in MATLAB abs(X) is the magnitude of X, if X is complex
+xlabel('Freq (rad/sec)'); ylabel('Magnitude of H(w)'); title('Log-Log Plot, Angular Acceleration');
+
+
+%% Question 7a: Apply a moving average to sine-wave input signals of different frequencies.
+
+% 7a - the effect of applying a moving average to sine-wave input signals of different frequencies.
+dt = 0.001; % Define the time step (sampling interval) for the time vector.
+t = [0:dt:2]'; % Create a time vector from 0 to 2 seconds, transposed to a column vector.
+freq_list = 2.^[-1:4]; % Define a list of frequencies (2^(-1) to 2^4), which are 0.5, 1, 2, 4, 8, 16 Hz.
+window_width = 0.1; % Set the width of the moving average window (0.1 seconds).
+Nwin = round(window_width / dt); % Calculate the number of samples in the moving average window.
+h = ones(Nwin, 1) / window_width; % Create the impulse response (kernel) for the moving average filter.
+
+figure;  
+
+% Loop through each frequency in the frequency list.
+for k = 1:length(freq_list)
+    w = 2 * pi * freq_list(k); % Calculate the angular frequency (rad/s) for the current frequency.
+    x = sin(w * t); % Generate a sine wave signal with the current frequency.
+
+    % Create a subplot for each frequency in a 1x6 grid.
+    subplot(1, 6, k); 
+    plot(t, x, t, conv(x, h, 'same') * dt); % Plot the original sine wave and the moving average result.
+    % The 'same' option in conv ensures the output is the same length as the input.
+    % Multiply by dt to account for the area under the curve during convolution. 
+end
+
+%% Question 7b: Create a 1x6 horizontal array of subplots, for signals of 6 different frequencies filtered by the same MA window-wave input signals of different frequencies. Extend this code so that the effect of MA filters with different widths can be appreciated. In particular, create an 7x6 array of subplots (subplot(7,6,?)) where each of the 7 rows will show a different MA window width, and each column (as before) will show a different frequency input. 
+
+% 7b 
+dt = 0.001; % Define the time step (sampling interval) for the time vector.
+t = [0:dt:2]'; % Create a time vector from 0 to 2 seconds, transposed to a column vector.
+freq_list = 2.^[-1:4]; % Define a list of frequencies (2^(-1) to 2^4), which are 0.5, 1, 2, 4, 8, 16 Hz.
+window_width_list = 0.05*2.^[0:0.5:3]; % multiplicatively-spaced MA window withs bet/n 50 ms - 400 ms ; 0.05 s = 50 ms (this makes a 1x7 vector)
+
+figure;  
+
+% Loop through each frequency in the frequency list.
+for row = 1:length(window_width_list)
+    window_width = window_width_list(row); % get the current window width
+    Nwin = round(window_width / dt); % Calculate the number of samples in the moving average window.
+    h = ones(Nwin, 1) / window_width; % Create the impulse response (kernel) for the moving average filter.
+
+% loop thru each freq in freq list
+    for col = 1:length(freq_list)
+        w = 2 * pi * freq_list(col); % Calculate the angular frequency (rad/s) for the current frequency.
+        x = sin(w * t); % Generate a sine wave signal with the current frequency.
+
+        % Create a subplot for each frequency in a 1x6 grid.
+        subplot(length(window_width_list), length(freq_list), (row-1)*length(freq_list)+col); 
+        plot(t, x, t, conv(x, h, 'same') * dt); % Plot the original sine wave and the moving average result.
+        % The 'same' option in conv ensures the output is the same length as the input.
+        % Multiply by dt to account for the area under the curve during convolution. 
+        if row == 1
+            title(sprintf('Freq: %.1f Hz', freq_list(col))); % Title for the first row
+        end
+        if col == 1
+            ylabel(sprintf('Width: %.1f ms', window_width * 1000)); % Y-label for the first column
+        end
+        xlabel('Time (s)');
+        ylabel('Amplitude');
+        grid on; % Add grid for better visibility.
+    end
+end 
+
+%% Question 7ci: Quantify the effect of smoothing across the conditions tested in this array of subplots by using MATLAB to detect the amplitude of the output signals so that you can make a (i) 2-D contour plot [“contourf()” in MATLAB] showing the log-scaled output signal amplitude as a function of the log-scaled sinusoidal frequency and the log-scaled window width
+
+% Loop through each frequency in the frequency list.
+for row = 1:length(window_width_list)
+    window_width = window_width_list(row); % get the current window width
+    Nwin = round(window_width / dt); % Calculate the number of samples in the moving average window.
+    h = ones(Nwin, 1) / window_width; % Create the impulse response (kernel) for the moving average filter.
+
+% loop thru each freq in freq list
+    for col = 1:length(freq_list)
+        w = 2 * pi * freq_list(col); % Calculate the angular frequency (rad/s) for the current frequency.
+        x = sin(w * t); % Generate a sine wave signal with the current frequency.
+
+        % convolve the signal w the moving avg filter
+        smoothed_signal = conv(x,h,'same')*dt;
+
+        % eq for contour map
+        q(row, col) = std(smoothed_signal); % for a perf sin signal, amplitude = stadard deviation * sqrt(2)
+    end
+end 
+
+figure
+contourf(freq_list,window_width_list, q); % x-value --> freq_list, y-value --> window_width_list, amplitudes--> matrix where each element corresponds to the amplitude for specfic combo of freq + window width 
+colorbar; % indicates mapping of color to amplitude values
+set(gca,'YDir','reverse')
+set(gca,'YScale','log')
+set(gca,'XScale','log')
+ylabel('Log-Scaled Window Width')
+xlabel('Log-Scaled Frequency')
+
+%% Question 7cii: Quantify the effect of smoothing across the conditions tested in this array of subplots by using MATLAB to detect the amplitude of the output signals so that you can make a  a regular line plot showing the log-scaled amplitude of the output signal as function of the (log-scaled) product of sinusoidal frequency and the window width 
+
+figure 
+loglog(w.*transpose(window_width_list), q)
+xlabel('Log-scaled Product of Frequency and Window Width');
+ylabel('Output Signal Amplitude');
+title('Log-scaled Amplitude vs. Log-scaled Product');
+
+%% Question 7d:  Plot the frequency domain (i.e. Fourier Transform (FT)) amplitude for each moving average window used in b. 
+
+dt=0.001; 
+
+figure;
+hold on
+for n = 1:7
+    window_width=window_width_list(n); 
+    N_win=round(window_width/dt); 
+    h=ones(N_win,1)/N_win; % create the filter window h(t) 
+    [H,W]=freqz(h*dt,1,1e4,1/dt); % use freqz to compute the FT at 1e4 different points, given a sampling rate of 1/dt.
+    subplot(7,1,n)
+    semilogx(W,abs(H)); % plot the FT amplitude abs(H) [note H is complex] using a log-scaled x-axis, note that the x-axis is frequency in Hz
+    ylabel(['width=', num2str(window_width)]);
+end
+xlabel('Frequency (Hz)');
+hold off
+
+%% Question 7e: Consider the composite signal x(t)=	2sin(2pi*t) +8sin(8pi*t). Based on the plot in (d) (and/or the one in (b)), choose a moving average filter width that will largely filter out the higher frequency 10 component while preserving the lower frequency component. Describe your thinking.  Plot the input x(t) and the filtered output y(t) resulting from applying the MA filter you chose. 
+
+% chose filter width of 0.2828
+number_windows_list = round(window_width_list./dt);
+x_e = 2*sin(2*pi*t) + 8*sin(8*pi*t);
+t_e = 1:0.001:3;
+h_e = ones(number_windows_list(6), 1)/ window_width_list(6); % filter is created based on window_width (6th entry)
+y_e = conv(x_e, h_e, 'same')*dt; % create filtered output
+
+figure; hold on
+plot(t_e, x_e)
+plot(t_e, y_e)
+title('Inpute and filtered input')
+legend('Input x','Filtered output y')
+xlabel('Time')
+ylabel('Signal')
+hold off
+
+%% Question 7f: Add noise to the input.  In particular, make an array of plots like in b, but add noise (with omega = 1) to all of the input signals. 
+
+omega=1;
+dt=0.001; t=[0:dt:2]'; freq_list=2.^[-1:4];
+window_width_list = 0.05*2.^[0:0.5:3];
+figure;
+hold on
+for row =1:7
+    window_width = window_width_list(row);
+    N_win = round(window_width/dt);
+    h = ones(N_win,1)/window_width;
+    for col = 1:length(freq_list);
+        w=2*pi*freq_list(col); 
+        x = sin(w*t)+omega*rand(size(t));
+        y = conv(x,h,'same')*dt;
+        subplot(7,6,(row-1)*length(freq_list)+col);
+        plot(t,x,t,y)
+        if row==1 %This is specific to the first row
+        title(['T=',num2str(2*pi/w)]);
+        end
+    end 
+    ylabel(['width=',num2str(window_width)]);
+end
+hold off
+   
+%% Question 7g: Use a moving average (A) to smooth a random noise signal. 
+
+t = 1:1000;
+x1=randn(1000,1); % 1000-point pure random noise signal
+Nw=101; 
+h=ones(Nw,1)/Nw; % Smooth w/ 101-point MA window 
+y1=conv(x1,h,'same');
+
+figure;
+hold on
+plot(t,x1)
+plot(t,y1,'Linewidth',2)
+xlabel('Time unit')
+ylabel('Noise signal')
+title('Smoothed noise')
+hold off
+
+% use the same smoothing window on a random signal
+N=1000; 
+A=0.7; % coefficient for autoregressive model
+x2=zeros(N,1); % initialize signal vector 
+x2(1)=randn(1,1); % set up first value of the signal to a random # from a standard normal distribution
+for k=1:N-1; % GENERATE RANDOM SIGNAL USING AUTOREGRESSIVE PROCESS
+    x2(k+1)=A*x2(k)+randn(1,1);  % each subsequent sample is a combo of the previous sample scaled by A + a new random noise value
+end; 
+x2 = x2/std(x2); % the last statement here makes this
+% new version of x have a standard deviation (std) of 1 like the previous x(n). (std(x) = 1 in both cases)
+y2=conv(x2,h,'same');
+
+figure;
+hold on
+plot(t, x2)
+plot(t,y2)
+xlabel('Time unit')
+ylabel('Auto-regressive noise signal')
+title('Smoothed auto-regressive noise signal')
+hold off
+
+% repeat but w/ the coefficient switched to -0.7 
+
+N=1000; 
+A=-0.7; 
+x3=zeros(N,1); 
+x3(1)=randn(1,1);
+for k=1:N-1;
+    x3(k+1)=A*x3(k)+randn(1,1); 
+end; 
+x3 = x3/std(x3);
+y3 = conv(x3,h,'same');
+
+figure;
+hold on
+plot(t,x3)
+plot(t,y3)
+xlabel('Time unit')
+ylabel('Auto-regressive noise signal')
+title('Smoothed auto-regressive noise signal')
+hold off
+
+% Subplots
+
+fx1 = abs(fft(x1));
+fy1 = abs(fft(y1));
+fx2 = abs(fft(x2));
+fy2 = abs(fft(y2));
+fx3 = abs(fft(x3));
+fy3 = abs(fft(y3));
+
+figure;
+hold on
+subplot(2,3,1)
+plot(t,x1,t,y1)
+xlabel('Time')
+ylabel('Response')
+title('A=0')
+subplot(2,3,2)
+plot(t,x2,t,y2)
+xlabel('Time')
+ylabel('Response')
+title('A=+0.7')
+subplot(2,3,3)
+plot(t,x3,t,y3)
+xlabel('Time')
+ylabel('Response')
+title('A=-0.7')
+subplot(2,3,4)
+plot(t,fx1,t,fy1)
+xlabel('Time')
+ylabel('Response')
+title('fourier transform of A=0')
+subplot(2,3,5)
+plot(t,fx2,t,fy2)
+xlabel('Time')
+ylabel('Response')
+title('fourier transform of A=+0.7')
+subplot(2,3,6)
+plot(t,fx3,t,fy3)
+xlabel('Time')
+ylabel('Response')
+title('fourier transform of A=-0.7')
+hold off
