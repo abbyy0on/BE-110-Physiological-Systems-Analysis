@@ -1,0 +1,181 @@
+%% Image compression and 2D Fourier series 
+
+% Load and process the image
+img = mean(imread('peppers.png'), 3); % Load the image and convert to greyscale
+imgSize = size(img); % Get dimensions of the image
+
+% Trim to odd dimensions if necessary
+if rem(imgSize(1), 2) == 0, img = img(2:end, :); end 
+if rem(imgSize(2), 2) == 0, img = img(:, 2:end); end 
+
+% Compute the Fourier transform and shift the zero frequency component to the center
+fftCoeffs = fftshift(fft2(img)); 
+fftSize = size(fftCoeffs); 
+rowCenter = (fftSize(1) + 1) / 2; % Calculate center row index
+colCenter = (fftSize(2) + 1) / 2; % Calculate center column index   
+
+% a) Isolate low frequency components
+lowFreqCoeffs = zeros(size(fftCoeffs)); % Initialize a matrix for low frequencies  
+retainSize = 20; % Define the size of the central block to retain  
+lowFreqCoeffs(rowCenter - retainSize:rowCenter + retainSize, colCenter - retainSize:colCenter + retainSize) = ...
+    fftCoeffs(rowCenter - retainSize:rowCenter + retainSize, colCenter - retainSize:colCenter + retainSize);
+imgLowFreq = real(ifft2(ifftshift(lowFreqCoeffs))); % Inverse FFT to get low frequency image  
+
+% b) Isolate high frequency components
+highFreqCoeffs = fftCoeffs; 
+highFreqCoeffs(rowCenter - retainSize:rowCenter + retainSize, colCenter - retainSize:colCenter + retainSize) = 0; % Remove low frequencies
+imgHighFreq = real(ifft2(ifftshift(highFreqCoeffs))); % Inverse FFT for high frequency image
+
+% c) Extract high amplitude coefficients
+highAmpCoeffs = zeros(size(fftCoeffs));
+sortedMagnitudes = sort(abs(fftCoeffs(:)), 'descend'); % Sort coefficients by their magnitude
+ampThreshold = sortedMagnitudes(floor(0.05 * numel(fftCoeffs))); % Define threshold for 5% highest amplitudes
+highAmpCoeffs(abs(fftCoeffs) >= ampThreshold) = fftCoeffs(abs(fftCoeffs) >= ampThreshold); % Keep significant coefficients
+imgHighAmp = real(ifft2(ifftshift(highAmpCoeffs))); % Get the image from high amplitude terms
+
+% d) Randomly select coefficients
+randomCoeffs = zeros(size(fftCoeffs));
+numRandomCoeffs = floor(0.05 * numel(fftCoeffs)); % Select 5% of coefficients
+randomIndices = randperm(numel(fftCoeffs), numRandomCoeffs); % Get random indices
+
+randomCoeffs(randomIndices) = fftCoeffs(randomIndices); % Assign random coefficients to new matrix
+imgRandom = real(ifft2(ifftshift(randomCoeffs))); % Generate image from randomly selected terms
+
+% Display the results
+figure;
+% Show the original image
+subplot(231); imagesc(img); title('Original Image');
+axis off; colormap gray;
+
+% Show low frequency components
+subplot(232); imagesc(imgLowFreq); title('(a) Low Frequency Components');
+axis off; colormap gray;
+
+% Show high frequency components
+subplot(233); imagesc(imgHighFreq); title('(b) High Frequency Components');
+axis off; colormap gray;
+
+% Show high amplitude components
+subplot(234); imagesc(imgHighAmp); title('(c) High Amplitude Components');
+axis off; colormap gray;
+
+% Show randomly selected components
+subplot(235); imagesc(imgRandom); title('(d) Randomly Selected Components');
+axis off; colormap gray;
+
+
+%% Take a simple 2-point signal [1 1] and repeatedly convolve it with itself. 
+ 
+
+numSteps = 1000; % Number of convolution steps
+kernel = [1 1]; % Initial kernel
+result{1} = conv(kernel, kernel); % First convolution
+
+% Perform convolutions and normalize
+for step = 1:numSteps
+    result{step + 1} = conv(kernel, result{step}); % Convolve with the previous result
+    result{step + 1} = result{step + 1} / max(abs(result{step + 1})); % Normalize to max amplitude of 1
+end
+
+finalSignal = result{numSteps}; % Final output after all convolutions
+
+% Plot the final result
+figure;
+plot(finalSignal, 'r');
+title('Final Signal after Convolution Process');
+xlabel('Sample Index');
+ylabel('Signal Amplitude');
+grid on;
+
+% Generate Gaussian function for comparison
+gaussianLength = length(finalSignal);
+gaussianCurve = exp(-linspace(-5, 5, gaussianLength) .^ 2); % Create Gaussian curve
+correlationValues = zeros(numSteps, 1); % Initialize correlation values
+
+% Calculate similarity to Gaussian at each step
+for step = 1:numSteps
+    currentSignal = result{step}; % Get current signal
+    currentSignal = currentSignal / max(abs(currentSignal)); % Normalize
+
+    % Adjust length to match Gaussian curve
+    if length(currentSignal) > gaussianLength
+        currentSignal = currentSignal(1:gaussianLength); % Truncate
+    elseif length(currentSignal) < gaussianLength
+        currentSignal = [currentSignal zeros(1, gaussianLength - length(currentSignal))]; % Pad
+    end
+    
+    correlationValues(step) = corr(currentSignal', gaussianCurve'); % Compute correlation
+end
+
+% Plot correlation values
+figure;
+plot(1:numSteps, correlationValues, 'r' );
+title('Correlation to Gaussian Across Convolution Steps');
+xlabel('Step Number');
+ylabel('Correlation Coefficient');
+grid on;
+
+%%
+numIterations = 1000; % Number of convolution steps
+positiveInputs = {[1.1, 0.8, 1.4], [2, 0.5, 1.2], [0.9, 1.3, 1.7]};
+negativeInputs = {-[1, 1.4, 0.9], -[2.3, 0.5, 1.1], -[1.2, 1.5, 0.7]};
+mixedInputs = {[-1, 1.2, -0.8], [0.7, -0.9, 1.1], [-1.5, 1.3, -1]};
+
+figure; % Create a figure for plotting
+
+% Process and plot positive signals
+for idx = 1:length(positiveInputs)
+    signal = positiveInputs{idx}; % Get current positive signal
+    convolutionResults{1} = conv(signal, signal); % Initial convolution
+    % Perform repeated convolution
+    for step = 1:numIterations - 1
+        convolutionResults{step + 1} = conv(signal, convolutionResults{step});
+        convolutionResults{step + 1} = convolutionResults{step + 1} / max(abs(convolutionResults{step + 1})); % Normalize
+    end
+    finalSignal = convolutionResults{numIterations}; % Final result
+    % Plot the result
+    subplot(3, 3, idx);
+    plot(finalSignal, 'r');
+    title(['Positive Input ' num2str(idx)]);
+    xlabel('Sample Index');
+    ylabel('Signal Amplitude');
+    grid on;
+end
+
+% Process and plot negative signals
+for idx = 1:length(negativeInputs)
+    signal = negativeInputs{idx}; % Get current negative signal
+    convolutionResults{1} = conv(signal, signal); % Initial convolution
+    % Perform repeated convolution
+    for step = 1:numIterations - 1
+        convolutionResults{step + 1} = conv(signal, convolutionResults{step});
+        convolutionResults{step + 1} = convolutionResults{step + 1} / max(abs(convolutionResults{step + 1})); % Normalize
+    end
+    finalSignal = convolutionResults{numIterations}; % Final result
+    % Plot the result
+    subplot(3, 3, idx + 3);
+    plot(finalSignal, 'r');
+    title(['Negative Input ' num2str(idx)]);
+    xlabel('Sample Index');
+    ylabel('Signal Amplitude');
+    grid on;
+end
+
+% Process and plot mixed signals
+for idx = 1:length(mixedInputs)
+    signal = mixedInputs{idx}; % Get current mixed signal
+    convolutionResults{1} = conv(signal, signal); % Initial convolution
+    % Perform repeated convolution
+    for step = 1:numIterations - 1
+        convolutionResults{step + 1} = conv(signal, convolutionResults{step});
+        convolutionResults{step + 1} = convolutionResults{step + 1} / max(abs(convolutionResults{step + 1})); % Normalize
+    end
+    finalSignal = convolutionResults{numIterations}; % Final result
+    % Plot the result
+    subplot(3, 3, idx + 6);
+    plot(finalSignal, 'r');
+    title(['Mixed Input ' num2str(idx)]);
+    xlabel('Sample Index');
+    ylabel('Signal Amplitude');
+    grid on;
+end
