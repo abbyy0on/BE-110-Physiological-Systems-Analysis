@@ -1,0 +1,228 @@
+% Abby Yoon 
+
+%% Question 3: construct a single bar (box function) input pattern (u), convolves it with a center surround impulse response (h), & plots the result (y) (alongside u for reference):
+
+% construct a box function (u) as our input
+% convolve it w/ a center-surround impulse response (h)
+% plot the result (y) 
+
+% PT 1: position vectors
+N=1000; %number of different horizontal positions to use - i.e. the number of data points
+x = [1:N]'/N; dx=1/N; % x = position vector (a column vector that goes from about 0 to 1, with N increments); this gives you a range of positions for your input signal
+x1 = [-0.1:dx:0.1]'; s1=0.0125; s2=0.04; % a shorter position vector x1 cntered around 0, used for creating h = h(x1)
+
+% PT 2: input function (box)
+u=x*0; % initialize a vector 'u' of zeroes, same size as x
+u((x>0.3)&(x<0.7)) = 1; % sets values in u to 1 for positions between 0.3 and 0.7, effectively creating a rectangular "bar" shape in the input; make u into a symmetric bar input with a length of 0.4; 
+
+% PT 3: center-surround filter
+h = 4*exp(-x1.^2/(2*s1^2)) - exp(-x1.^2/(2*s2^2)); % creates a center-surround filter. The first term creates a Gaussian-like peak, while the second term creates a broader Gaussian that subtracts from the first, leading to a "center-surround" effect where there's a strong response in the center and a weaker response in the surrounding area.
+h=h/sum(h); % normalizes h so that the total area under the curve is 1
+
+% PT 4: convolution 
+y = conv(u,h,'same'); % convolve the input u with the filter/system h to determine the output y; 'same' option means the output 'y' will have the same size as 'u'
+
+% PT 5: visualization
+figure; set(gcf,'position',[20 700 1000 200]) % illustrate modeled visual processing
+subplot(1,7,[1 3]); plot(x,u); ylim ([-1 2]); title('1D input representation – a bar of light');
+subplot(1,7,4); plot(x1, h,'m'); title({'Center-surround', 'receptive field based filter'});
+subplot(1,7,[5 7]); plot(x,u,x,y); legend({'Input u','Response y'}); title('Center-surround response');
+ 
+% FIGURE 2
+% extrapolate the results for 7 bars of the different lengths 
+bar_length_list = [0.4 0.2 0.1 0.05 .02 .01 .005]; Nb=length(bar_length_list); 
+figure;
+for k=1:Nb,
+    u = 0*x; % initialize input vector (same size as x)
+    y = 0*x; % initialize output vector
+    u((x>0.3)&(x<0.3+bar_length_list(k))) = 1; % make u  = bar height we specified
+    y = conv(u,h,'same'); 
+    subplot(Nb,3,(k-1)*3+1); plot(x,u); ylim([-1,3]); if Nb==1, title('1D input representation – a bar of light'); end
+    subplot(Nb,3,(k-1)*3+2); plot(x1, h,'m'); if Nb==1, title({'CS RF filter'}) ; end
+    subplot(Nb,3,(k-1)*3+3); plot(x,u,x,y); if Nb==1, legend({'Input','Response'}); title('Center-surround response') ; end
+end
+
+%% Question 4:  Create and show center-surround responses for input patterns with different spatial frequencies
+
+% illustration of center-surround filtering for periodic inputs 
+% u = raw image input (i.e. the light intensity input function),  h = filter,  y = output 
+
+N=1000;    %number of different horizontal positions to use in the (vertical-stripe) images - i.e. the number of data points
+x = [1:N]'/N;  dx=1/N; % x = position vector (x is a column vector that goes from about 0 to 1, with N increments)
+f_list = [1.5 3,6,12,24,48]; Nf=length(f_list);   % A list of the different frequencies to be used
+
+x1 = [-0.1:dx:0.1]'; % x1 = position vector for h
+s1=0.01; s2=0.032; h = 4*exp(-x1.^2/(2*s1^2)) - exp(-x1.^2/(2*s2^2));  % make a center-surround filter 
+                          % by summing a tall narrow Gaussian function and a shorter wide negative Gaussian function
+                          % Note that the height ratio between these 2 compontents is 4:1 
+                          % & the width (sigma (s) ratio is 5:16, so the area ratio is 20:16 = 1.25:1                                                           
+h=h/sum(h); % scale the filter so the area under the curve is 1.0 
+            % This scaling is not crucial, but it helps keep the ouput scaling in line with the input scaling                           
+ 
+% construct light patterns and filter them
+figure;
+clear umat;
+for kf=1:Nf,                     
+    f = f_list(kf);
+    % now let's generate 2 different input pattterns and pack them them into matrix umat
+    % generate a sine-wave & a square-wave pattern (u1) knowing that the MATLAB functions we're using have T=2pi
+    % the 2nd statement in each line "u1 = (u1+1)/2;" scales the pattern from a range of [-1,1] down to [0,1];
+    u1 = sin(x*2*pi*f); u1 = (u1+1)/2;    umat(:,1)=u1;
+    u1 = square(x*2*pi*f); u1 = (u1+1)/2; umat(:,2)=u1;  % horizontally stack sine-wave & square-wave signals at given freq
+    Nu = size(umat,2); % the number of different inputs
+    Nr = 1+3*Nu; % the number of rows in the plot we're making
+    subplot(Nr,Nf,kf); plot(x1,h,'r',x,0,':k','linewidth',2); xlim([-0.5,0.5]); title(['Freq=',num2str(f)]); % plot the RF (the filter)
+    if kf==1, subplot(Nr,Nf,kf);  ylabel('Filter'); end
+    for ku=1:Nu,
+        u = umat(:,ku); %extract the current input signal from umat
+        y = simplefilter(u,h);
+        subplot(Nr,Nf,(3*(ku-1)+1)*Nf+kf); colormap(gray); imagesc(x,1:2,[u,y]',[-1.5 2.5]); % plot stacked images of u & y
+        subplot(Nr,Nf,(3*(ku-1)+2)*Nf+kf); plot(x,u,'b'); grid; xlim([0 1]); ylim([-.2 1.2]); % plot u as a line graph
+        subplot(Nr,Nf,(3*(ku-1)+3)*Nf+kf); plot(x,y,'m'); grid; xlim([0 1]); ylim([-1.8 2.8]); % plot y as a line graph
+        if kf==1,
+            subplot(Nr,Nf,(3*(ku-1)+1)*Nf+kf); ylabel('Response & Input'); set(gca,'ytick',[1 2],'yticklabel',{'u','y'});
+            subplot(Nr,Nf,(3*(ku-1)+2)*Nf+kf); ylabel('Input');
+            subplot(Nr,Nf,(3*(ku-1)+3)*Nf+kf); ylabel('Response');
+        end
+    end
+end
+set(gcf,'position',[0 0 1050 700]);          % resize figure window (make it bigger)
+shg;
+
+%% Question 5:  Make a stepped input pattern u, convolve it with the center surround impulse resopnse function used above, and plot the result  
+
+N_steps = 5; 
+time = (0:N-1)'; % Time vector; N was defined in problem 3-ish
+
+% Create step function input
+u = (ceil(N_steps * x) - 1) / (N_steps - 1); 
+
+% Convolve with the center-surround impulse response function h
+conved_result = conv(u, h, 'same'); 
+
+% Create a figure for plotting
+figure;
+hold on;
+
+% Plot the input signal
+plot(time, u, 'b', 'DisplayName', 'Input u'); 
+
+% Plot the convolved result
+plot(time, conved_result, 'r', 'DisplayName', 'Response y'); 
+
+% Add titles and labels
+title('Step Function and Response');
+xlabel('Time');
+ylabel('Amplitude');
+legend show; % Show legend to display the names of the plots
+hold off; % Release hold on the current figure
+
+%% Question 6:  Use three simple 3x3 2-D filters {cs_horz, cs_vert, & cs_both} to filter the image of a low-contrast square a stepped input pattern u, convolve it with the center surround impulse resopnse function used above, and plot the result  
+
+% 2D image processing - cartoon example
+
+u=0.63*ones(100,100); u(40:60,40:60)=0.6;  % image of a darker square on a slghtly lighter background
+h=-1*ones(3); h(2,2)=9;   cs_both=h;       % make a 2-D filter matrix
+h=-1*ones(3); h(2,:)=7/3; cs_horz=h;       % make a 2-D filter matrix
+h=-1*ones(3); h(:,2)=7/3; cs_vert=h;       % make a 2-D filter matrix
+hh={cs_both,cs_horz,cs_vert};              % stack the filters together into a cell array (for easy access)
+
+figure; colormap(gray);
+subplot(2,2,1); imshow(u); axis square; 
+for k=1:3,
+    y=conv2(u,hh{k},'valid'); 
+    subplot(2,2,k+1); imshow(y); axis square;
+end
+title_list={'original','cs-both','cs-horz','cs-vert'}
+for k=1:4,subplot(2,2,k); title(title_list{k}); end
+
+
+%% Question 7:  Apply radially-symmetric contrast-enhancing filters (like cs_both in the problem above) of varying sizes to a photographic image and compare the results.    
+
+% 2D image processing - real image example
+
+x=imread('pout.tif'); x=x(:,:,1); f1=-1*ones(3); f1(2,2)=9; x1=conv2(x,f1,'valid'); 
+h=-1*ones(3); h(2,2)=9/1;      h3=h;  % 3x3 center-surround filter with sum=1; 'h(2,2)' assigns the center of the filer to a value of 9, & the sum of the filter = 9 + (-1*8) = 1
+h=-1*ones(5); h(2:4,2:4)=17/9; h5=h;  % 5x5 center-surround filter with sum=1 (total + contribution from cetner = 17/9 * 9 = 17, total - contribution from surroudning 16 pixels = -16);
+h=-1*ones(5); h(3,3)=25; h5a=h;       % 5x5 center-surround filter with narrower center, also with sum=1;
+
+%make the 3 additional filters called for in the problem and add them to "h_list" & "title_list" below, note that the
+%orginal plot has extra subplot spaces left in it for these addiional filters
+h=-1*ones(7); h(2:6,2:6)=25/25;      h7=h;  % 7x7 center-surround filter with sum=1;
+h=-1*ones(9); h(2:8,2:8)=33/49; h9=h;  % 9x9 center-surround filter with sum=1;
+h=-1*ones(11); h(2:10,2:10)=41/81; h11=h;       % 11x11 center-surround filter with narrower center, also with sum=1;
+
+h_list = {h3,h5,h5a, h7, h9, h11};
+title_list={'3x3 CS','5x5 CS','5x5 CS w/ narrow center','7x7 CS', '9x9 CS', '11x11 CS'}
+
+figure; subplot(2,4,1); imshow(x,[0 255]); title('Original image');
+for k=1:length(h_list),
+    y=conv2(x,h_list{k},'valid'); 
+    subplot(2,4,k+1); imshow(y,[0 255]); title(title_list{k});
+end
+
+%% Question 12a: Derive the formula for estimating the coefficients of quadratic regression formula; then, make a plot illustrating how well you can recover these coefficients from noisy data. In particular, choose values for the coefficients, generate (mean-centered) data, add noise, and then plot the estimated regression     
+
+k1=-2; k2=0.5; x = [-5:5]'; % note x defined so that mean(x)=0
+yclean = k1*x + k2*x.^2; % this is the ‘true’ noise-free y
+y_noisy = k1*x + k2*x.^2 + 2*randn(size(x)); % this is a noisy version of y
+% Edit the following line!! Use projection-based expressions here to compute the optimal values for k1hat, k2hat
+k1hat=dot(y_noisy, x)/dot(x,x);
+k2hat=dot(y_noisy, x.^2)/dot(x.^2,x.^2);
+% Note above, that k1 & k2 dictate the true model/relationship used to generate the (noisy) quadratic data
+% whereas k1hat and k2hat are estimates of these coefficients made using the noisy data
+% Now use MATLAB’s regress function to also compute k1hat & k2hat for comparison to your hand-derived estimates
+b=regress(y_noisy,[x,x.^2]); k1hat_reg=b(1); k2hat_reg=b(2);
+% Now compute the estimated relationships based on analysis of the noisy data
+yhat = k1hat*x + k2hat*x.^2;
+yhat_reg = k1hat_reg*x + k2hat_reg*x.^2;
+% Plot & display the results
+figure; plot(x,y_noisy,'o'); hold on; plot(x,yclean,x,yhat,'-*',x,yhat_reg,'-');
+legend({'Noisy data', 'True pre-noise relationship', 'Projection-based estimate', 'Projection-based estimate', 'Regression-based estimate'});
+title({['The original coeffs (k1,k2): (', num2str(k1,3), ',', num2str(k2,3),').'],...
+[' My estimated coeffs: (', num2str(k1hat,3), ',', num2str(k2hat,3),')']...
+[' Matlab “regress” estimates: (', num2str(k1hat_reg,3), ',', num2str(k2hat_reg,3),')']});
+
+%% Question 12b: Modify the code above for linear regression with an offset    
+
+k1=-2; k0=0.5; x = [-5:5]'; % note x defined so that mean(x)=0
+yclean = k1*x + k0; % this is the ‘true’ noise-free y
+y_noisy = k1*x + k0 + 2*randn(size(x)); % this is a noisy version of y
+N = length(y_noisy);
+% Edit the following line!! Use projection-based expressions here to compute the optimal values for k1hat, k2hat
+k1hat=dot(y_noisy, x)/dot(x,x);
+k0hat = sum(y_noisy)/N;
+g = ones(size(x));
+ % Note above, that k1 & k2 dictate the true model/relationship used to generate the (noisy) quadratic data
+% whereas k1hat and k2hat are estimates of these coefficients made using the noisy data
+% Now use MATLAB’s regress function to also compute k1hat & k2hat for comparison to your hand-derived estimates
+b=regress(y_noisy,[x,g]); k1hat_reg=b(1); k2hat_reg=b(2);
+% Now compute the estimated relationships based on analysis of the noisy data
+yhat = k1hat*x + k2hat;
+yhat_reg = k1hat_reg*x + k2hat_reg;
+% Plot & display the results
+figure; plot(x,y_noisy,'o'); hold on; plot(x,yclean,x,yhat,'-*',x,yhat_reg,'-');
+legend({'Noisy data', 'True pre-noise relationship', 'Projection-based estimate', 'Projection-based estimate', 'Regression-based estimate'});
+title({['The original coeffs (k1,k2): (', num2str(k1,3), ',', num2str(k2,3),').'],...
+[' My estimated coeffs: (', num2str(k1hat,3), ',', num2str(k2hat,3),')']...
+[' Matlab “regress” estimates: (', num2str(k1hat_reg,3), ',', num2str(k2hat_reg,3),')']});
+
+% check whether regressors are independent 
+check1 = dot(g,x);
+check2 = dot(x,x.^2);
+
+%% simple filter function 
+function y=simplefilter(x,h);
+
+if size(x,2) > size(x,1), x=x';  end % flip vector around into a colum vector if needed
+if size(h,2) > size(h,1), h=h';  end
+hw=(length(h)-1)/2;                  % compute the half-width (hw) of the filter;
+y = NaN*zeros(size(x));              % initialize y(k)
+for k=(hw+1):(length(x)-hw-1), 
+    y(k,:) = sum( repmat(h,1,size(x,2)) .* x((k-hw):(k+hw),:) );  % compute convolution
+end  
+
+if length(h) > length(x)/2, y=conv2(x,h,'full'); y=y(1:length(x)); end;
+end
+
+
